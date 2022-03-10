@@ -28,7 +28,7 @@ def generate_url(origins, destinations, api_key, dtime, mode='transit', tmode='b
     return url
 
 
-api_key = 'AIzaSyBCRoSc3S67asYfdDL79eAOXRYBubgU3aI'
+api_key = 'XYZ'
 payload={}
 headers = {}
 individuals = True
