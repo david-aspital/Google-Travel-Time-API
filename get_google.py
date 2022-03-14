@@ -24,7 +24,10 @@ import time
 
 
 def generate_url(origins, destinations, api_key, dtime, mode='transit', tmode='bus|subway|tram'):
-    url = f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={origins}&destinations={destinations}&mode={mode}&transit_mode={tmode}&departure_time={dtime}&key={api_key}"
+    if tmode is None:
+        url = f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={origins}&destinations={destinations}&mode={mode}&departure_time={dtime}&key={api_key}"
+    else:
+        url = f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={origins}&destinations={destinations}&mode={mode}{'&transit_mode='+tmode}&departure_time={dtime}&key={api_key}"
     return url
 
 
@@ -37,7 +40,7 @@ individuals = True
 # Format of locations.csv: Orig_Long,Orig_Lat,Dest_Long,Dest_Lat
 
 #locations = pd.read_csv(f'locations.csv')
-locations = pd.read_excel('TransferLinks_v2.xlsx',sheet_name='Input', skiprows=19)
+locations = pd.read_excel('TransferLinks_v3.xlsx',sheet_name='Input', skiprows=19)
 locations['Origins'] = locations.Orig_Lat.astype(str) +"%2C" + locations.Orig_Long.astype(str)
 locations['Destinations'] = locations.Dest_Lat.astype(str) +"%2C" + locations.Dest_Long.astype(str)
 
@@ -47,13 +50,19 @@ nice_time = time.strptime(txt_time)
 dtime = calendar.timegm(nice_time)
 
 
+modes =  ['driving', 'transit', 'bicycling', 'walking']
 
 if individuals:
     responses = []
-    for index, row in locations.iterrows():
-        url = generate_url(row.Origins, row.Destinations, api_key, dtime, 'transit', 'bus|subway|tram')
-        responses.append(requests.request("GET", url, headers=headers, data=payload).text)
-    locations['Response'] = responses
+    for mode in modes:
+        if mode == 'transit':
+            tmode = 'bus|subway|tram'
+        else:
+            tmode = None
+        for index, row in locations.iterrows():
+                url = generate_url(row.Origins, row.Destinations, api_key, dtime, mode, tmode)
+                responses.append(requests.request("GET", url, headers=headers, data=payload).text)
+        locations[mode] = responses
     locations.to_csv(f'GoogleDistanceMatrix_{txt_time.replace(":","-")}.csv')
 
 else:
@@ -62,6 +71,11 @@ else:
 
     origins = '%7C'.join(orig_locs)
     destinations = '%7C'.join(dest_locs)
-    url = generate_url(origins, destinations, api_key, dtime, 'transit', 'bus|subway|tram')
-    response = requests.request("GET", url, headers=headers, data=payload)
-    response.text.to_csv(f'GoogleDistanceMatrix_{txt_time.replace(":","-")}.csv')
+    for mode in modes:
+        if mode == 'transit':
+            tmode = 'bus|subway|tram'
+        else:
+            tmode = None
+        url = generate_url(origins, destinations, api_key, dtime, mode, tmode)
+        response = requests.request("GET", url, headers=headers, data=payload)
+        response.text.to_csv(f'GoogleDistanceMatrix_{mode}_{txt_time.replace(":","-")}.csv')
